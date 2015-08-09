@@ -2,12 +2,13 @@ package com.kasra.donutdrop.models;
 
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Batch;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.graphics.g2d.TextureAtlas;
+import com.badlogic.gdx.graphics.g2d.TextureAtlas.AtlasRegion;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.utils.Array;
-import com.badlogic.gdx.utils.viewport.Viewport;
+import com.kasra.donutdrop.TextureManager;
 
 import java.util.Random;
 
@@ -18,31 +19,31 @@ public class Row extends Actor {
     private Random random;
     private float worldWidth;
 
-    public Row(World world, float speed, float worldWidth, Texture leftTexture, Texture texture, Texture rightTexture, Texture altLeft, Texture alt, Texture altRight) {
+    public Row(World world, float speed, float worldWidth) {
         tiles = new Array<Tile>();
 
         random = new Random();
         this.worldWidth = worldWidth;
 
-        generateRow(world, speed, leftTexture, texture, rightTexture, altLeft, alt, altRight);
+        generateRow(world, speed);
     }
 
-    private void generateRow(World world, float speed, Texture aLeft, Texture a, Texture aRight, Texture bLeft, Texture b, Texture bRight) {
-        float TILE_SIZE = worldWidth / 8.0f;
+    private void generateRow(World world, float speed) {
+        float TILE_SIZE = worldWidth / 6.0f;
         float tileX = TILE_SIZE / 2.0f;
 
         if (random.nextFloat() < 0.5)
-            generateTile(world, tileX, TILE_SIZE, speed, aLeft, bLeft);
+            generateTile(world, tileX, TILE_SIZE, speed, TextureManager.get().getTileLeftSet());
 
         tileX += TILE_SIZE;
 
         while(tileX < worldWidth - TILE_SIZE / 2.0f) {
             if (shouldMakeTile((int)(tileX / TILE_SIZE)))
-                generateTile(world, tileX, TILE_SIZE, speed, a, b);
+                generateTile(world, tileX, TILE_SIZE, speed, TextureManager.get().getTileSet());
             tileX += TILE_SIZE;
         }
 
-        generateTile(world, tileX, TILE_SIZE, speed, aRight, bRight);
+        generateTile(world, tileX, TILE_SIZE, speed, TextureManager.get().getTileRightSet());
     }
 
     private boolean shouldMakeTile(int tileIndex) {
@@ -60,9 +61,14 @@ public class Row extends Actor {
         return random.nextFloat() >= 0.3;
     }
 
-    private void generateTile(World world, float x, float tileSize, float upwardsForce, Texture a, Texture b) {
-        Texture texture = random.nextFloat() >= 0.4 ? a : b;
-        tiles.add(new Tile(texture, world, tileSize, tileSize, x, -tileSize, upwardsForce));
+    private void generateTile(World world, float x, float tileSize, float upwardsForce, Array<AtlasRegion> options) {
+        TextureRegion texture;
+        if (options.size == 1)
+            texture = options.first();
+        else {
+            texture = random.nextFloat() >= 0.4 ? options.first() : options.get(options.size - 1);
+        }
+        tiles.add(new Tile(texture, world, tileSize, tileSize / 2.0f, x, -tileSize, upwardsForce));
     }
 
     @Override

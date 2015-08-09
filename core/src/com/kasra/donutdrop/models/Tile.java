@@ -1,29 +1,25 @@
 package com.kasra.donutdrop.models;
 
-import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Batch;
-import com.badlogic.gdx.graphics.g2d.Sprite;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
-import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.BodyDef;
 import com.badlogic.gdx.physics.box2d.FixtureDef;
 import com.badlogic.gdx.physics.box2d.PolygonShape;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.scenes.scene2d.Actor;
-import com.badlogic.gdx.utils.viewport.Viewport;
 
 public class Tile extends Actor {
     private Body body;
-    private Texture texture;
+    private TextureRegion texture;
 
     private float width;
     private float height;
 
-    public Tile(Texture texture, World world, float width, float height, float x, float y, float velocity) {
-        this.texture = texture;
+    public Tile(TextureRegion textureRegion, World world, float width, float height, float x, float y, float velocity) {
+        this.texture = textureRegion;
         this.width = width;
         this.height = height;
 

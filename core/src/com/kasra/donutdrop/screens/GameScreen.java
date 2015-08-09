@@ -1,11 +1,15 @@
 package com.kasra.donutdrop.screens;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.FPSLogger;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
-import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.math.Matrix4;
+import com.badlogic.gdx.graphics.g2d.Batch;
+import com.badlogic.gdx.graphics.g2d.TextureAtlas;
+import com.badlogic.gdx.graphics.g2d.TextureAtlas.AtlasRegion;
+import com.badlogic.gdx.math.Interpolation;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.physics.box2d.Body;
 import com.badlogic.gdx.physics.box2d.BodyDef;
@@ -16,12 +20,10 @@ import com.badlogic.gdx.physics.box2d.FixtureDef;
 import com.badlogic.gdx.physics.box2d.World;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.utils.Array;
-import com.badlogic.gdx.utils.Scaling;
 import com.badlogic.gdx.utils.viewport.ExtendViewport;
-import com.badlogic.gdx.utils.viewport.ScalingViewport;
-import com.badlogic.gdx.utils.viewport.Viewport;
 import com.kasra.donutdrop.DonutDrop;
-import com.kasra.donutdrop.SizeUtil;
+import com.kasra.donutdrop.TextureManager;
+import com.kasra.donutdrop.models.Background;
 import com.kasra.donutdrop.models.Donut;
 import com.kasra.donutdrop.models.Row;
 
@@ -34,19 +36,12 @@ public class GameScreen implements Screen {
     public final static int WORLD_HEIGHT = 128;
 
     private World world;
+//    private Box2DDebugRenderer renderer;
     private double accumulator;
 
+    private Background background;
     private Stage stage;
     private OrthographicCamera camera;
-    private Viewport viewport;
-
-    private Texture textureDonut;
-    private Texture textureRowLeft;
-    private Texture textureRow;
-    private Texture textureRowRight;
-    private Texture textureRowAltLeft;
-    private Texture textureRowAlt;
-    private Texture textureRowAltRight;
 
     private Donut donut;
     private Array<Row> rows;
@@ -55,24 +50,39 @@ public class GameScreen implements Screen {
 
     private int lastBottomRowN = 0;
 
-    private final static float ROW_SPEED_MIN = 20;
-    private final static float ROW_SPEED_MAX = 60;
+    private final static float ROW_SPEED_MIN = 30;
+    private final static float ROW_SPEED_MAX = 80;
+    private final static float SECONDS_UNTIL_MAX_SPEED = 30.0f;
+
+    private final static float DONUT_MIN_HORIZONTAL_SPEED = 50;
+    private final static float DONUT_MAX_HORIZONTAL_SPEED = 100;
+
+    private Interpolation speedInterpolation;
+    private float gameTime;
+
+    private int numLives = 3;
+
+//    private FPSLogger fpsLogger;
 
     public GameScreen(DonutDrop game) {
         this.game = game;
-
         random = new Random();
 
         Box2D.init();
 
         world = new World(new Vector2(0, -10), true);
-        setEdges();
-        loadTextures();
+//        renderer = new Box2DDebugRenderer(true, false, true, false, false, false);
+//        fpsLogger = new FPSLogger();
 
         camera = new OrthographicCamera(Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         stage = new Stage(new ExtendViewport(WORLD_WIDTH, WORLD_HEIGHT, camera), game.batch);
+        background = new Background(stage.getWidth(), stage.getHeight());
 
+        setEdges();
         spawnDonut();
+
+        speedInterpolation = Interpolation.sineIn;
+        gameTime = 0;
 
         rows = new Array<Row>();
         spawnRow(ROW_SPEED_MIN);
@@ -86,7 +96,7 @@ public class GameScreen implements Screen {
         Body leftWall = world.createBody(leftWallDef);
 
         EdgeShape shape = new EdgeShape();
-        shape.set(0, 0, 0, WORLD_HEIGHT);
+        shape.set(0, 0, 0, stage.getHeight());
 
         FixtureDef fixtureDef = new FixtureDef();
         fixtureDef.shape = shape;
@@ -99,12 +109,12 @@ public class GameScreen implements Screen {
 
         BodyDef rightWallDef = new BodyDef();
         rightWallDef.type = BodyDef.BodyType.StaticBody;
-        rightWallDef.position.set(WORLD_WIDTH, 0);
+        rightWallDef.position.set(stage.getWidth(), 0);
 
         Body rightWall = world.createBody(rightWallDef);
 
         shape = new EdgeShape();
-        shape.set(WORLD_WIDTH, 0, WORLD_WIDTH, WORLD_HEIGHT);
+        shape.set(stage.getWidth(), 0, stage.getHeight(), stage.getHeight());
 
         fixtureDef = new FixtureDef();
         fixtureDef.shape = shape;
@@ -116,23 +126,19 @@ public class GameScreen implements Screen {
         shape.dispose();
     }
 
-    private void loadTextures() {
-        textureDonut = new Texture(Gdx.files.internal("donut.png"));
-        textureRowLeft = new Texture(Gdx.files.internal("tile_left.png"));
-        textureRow = new Texture(Gdx.files.internal("tile.png"));
-        textureRowRight = new Texture(Gdx.files.internal("tile_right.png"));
-        textureRowAltLeft = new Texture(Gdx.files.internal("tile_1_left.png"));
-        textureRowAlt = new Texture(Gdx.files.internal("tile_1.png"));
-        textureRowAltRight = new Texture(Gdx.files.internal("tile_1_right.png"));
-    }
-
     private void spawnDonut() {
-        donut = new Donut(textureDonut, world, stage.getWidth(), stage.getHeight());
+        if (donut != null) {
+            donut.remove();
+            numLives -= 1;
+            if (numLives < 0)
+                numLives = 3;
+        }
+        donut = new Donut(world, stage.getWidth(), stage.getHeight());
         stage.addActor(donut);
     }
 
     private void spawnRow(float speed) {
-        Row row = new Row(world, speed, stage.getWidth(), textureRowLeft, textureRow, textureRowRight, textureRowAltLeft, textureRowAlt, textureRowAltRight);
+        Row row = new Row(world, speed, stage.getWidth());
         stage.addActor(row);
         rows.add(row);
     }
@@ -144,15 +150,57 @@ public class GameScreen implements Screen {
 
         game.batch.setProjectionMatrix(camera.combined);
 
+        game.batch.begin();
+        background.draw(game.batch);
+        game.batch.end();
+
         stage.draw();
+
+        drawScore(game.batch);
 
         input();
         move();
         tick(delta);
     }
 
-    private void input() {
+    private void drawScore(Batch batch) {
+        batch.begin();
 
+        AtlasRegion donut = TextureManager.get().getDonut();
+        float lifeWidth = WORLD_WIDTH / 24.0f;
+        float lifeHeight = donut.getRotatedPackedHeight() / (donut.getRotatedPackedWidth() / lifeWidth);
+
+        float padding = 1;
+        float lifeX = padding;
+        float lifeY = WORLD_HEIGHT - lifeHeight - padding;
+
+        for (int i = 0; i < numLives; i++) {
+            batch.draw(TextureManager.get().getDonut(), lifeX, lifeY, lifeWidth, lifeHeight);
+            lifeX += lifeWidth + padding;
+        }
+
+        batch.end();
+    }
+
+    private void input() {
+        float accel = 0.0f;
+
+        if (Gdx.input.isPeripheralAvailable(Input.Peripheral.Accelerometer)) {
+            accel = Gdx.input.getAccelerometerX() / -10.0f;
+        } else {
+            if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) accel = -1.0f;
+            if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) accel = 1.0f;
+        }
+
+        if (Math.abs(accel) < 0.1)
+            donut.move(0.0f);
+        else {
+            float finalSpeed = DONUT_MIN_HORIZONTAL_SPEED + ((DONUT_MAX_HORIZONTAL_SPEED - DONUT_MIN_HORIZONTAL_SPEED) * Math.abs(accel));
+            if (accel < 0.0f)
+                finalSpeed *= -1.0f;
+            System.out.println("Speed: " + finalSpeed);
+            donut.move(finalSpeed);
+        }
    }
 
     private void move() {
@@ -161,23 +209,25 @@ public class GameScreen implements Screen {
             spawnDonut();
         }
 
-        if (rows.first().getY() > WORLD_HEIGHT) {
-            stage.getActors().removeIndex(0);
-            rows.removeIndex(0);
+        if (rows.size > 0 && rows.first().getY() > WORLD_HEIGHT) {
+            rows.removeIndex(0).remove();
         }
 
-        Row lastRow = rows.get(rows.size - 1);
-        int rowY = (int)Math.floor(lastRow.getY());
-        int rowN = (int)Math.floor(rowY / donut.getRadius());
+        if (rows.size > 0) {
+            Row lastRow = rows.get(rows.size - 1);
+            int rowY = (int) Math.floor(lastRow.getY());
+            int rowN = (int) Math.floor(rowY / (donut.getRadius() * 2));
 
-        if (rowN != lastBottomRowN && (rowN % 2 == 1)) {
-            System.out.println("rowN: " + rowN);
-            lastBottomRowN = rowN;
+            if (rowN != lastBottomRowN && (rowN % 2 == 1)) {
+                lastBottomRowN = rowN;
 
-            if (random.nextFloat() <= 0.70)
-                spawnRow(getRowSpeedMultiplier());
-            else if (lastBottomRowN == 3)
-                spawnRow(getRowSpeedMultiplier());
+                if (donut.getBoxPosition().y < WORLD_HEIGHT / 2.0f)
+                    spawnRow(getRowSpeedMultiplier());
+                else if (random.nextFloat() <= 0.70)
+                    spawnRow(getRowSpeedMultiplier());
+                else if (lastBottomRowN == 3)
+                    spawnRow(getRowSpeedMultiplier());
+            }
         }
     }
 
@@ -187,14 +237,19 @@ public class GameScreen implements Screen {
 
         while (accumulator >= 1.0f / 60.0f) {
             world.step(1.0f / 60.0f, 4, 3);
+            background.tick(deltaTime);
             accumulator -= 1.0f / 60.0f;
         }
+
+        gameTime += deltaTime;
     }
 
     private float getRowSpeedMultiplier() {
-        return ROW_SPEED_MIN;
+        float distanceToMaxSpeed = gameTime / SECONDS_UNTIL_MAX_SPEED;
+        if (distanceToMaxSpeed > 1)
+            distanceToMaxSpeed = 1.0f;
 
-        // #TODO: Some easing function based on elapsed time since start of game for [ROW_SPEED_MIN, ROW_SPEED_MAX]
+        return speedInterpolation.apply(ROW_SPEED_MIN, ROW_SPEED_MAX, distanceToMaxSpeed);
     }
 
     @Override
@@ -204,6 +259,7 @@ public class GameScreen implements Screen {
     @Override
     public void resize(int width, int height) {
         stage.getViewport().update(width, height, true);
+        background.setSize(stage.getWidth(), stage.getHeight());
     }
 
     @Override
@@ -220,12 +276,5 @@ public class GameScreen implements Screen {
 
     @Override
     public void dispose() {
-        textureDonut.dispose();
-        textureRowLeft.dispose();
-        textureRow.dispose();
-        textureRowRight.dispose();
-        textureRowAltLeft.dispose();
-        textureRowAlt.dispose();
-        textureRowAltRight.dispose();
     }
 }
