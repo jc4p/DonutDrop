@@ -114,7 +114,7 @@ public class GameScreen implements Screen {
         Body rightWall = world.createBody(rightWallDef);
 
         shape = new EdgeShape();
-        shape.set(stage.getWidth(), 0, stage.getHeight(), stage.getHeight());
+        shape.set(0, 0, 0, stage.getHeight());
 
         fixtureDef = new FixtureDef();
         fixtureDef.shape = shape;
