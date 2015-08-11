@@ -19,6 +19,8 @@ public class Donut extends Actor {
     private TextureRegion texture;
     private float radius;
 
+    private float VERTICAL_SPEED = -30.0f;
+
     public Donut(World world, float worldWidth, float worldHeight) {
         texture = TextureManager.get().getDonut();
         setScale(SizeUtil.WORLD_TO_BOX);
@@ -56,7 +58,7 @@ public class Donut extends Actor {
         float velocityDelta = force - velocity;
         float impulse = body.getMass() * velocityDelta;
         body.applyLinearImpulse(new Vector2(impulse, 0), body.getWorldCenter(), true);
-        body.setLinearVelocity(getLinearVelocity().x, -30.0f);
+        body.setLinearVelocity(getLinearVelocity().x, VERTICAL_SPEED);
     }
 
     public float getRadius() {

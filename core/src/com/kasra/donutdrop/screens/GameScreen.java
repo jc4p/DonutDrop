@@ -50,12 +50,12 @@ public class GameScreen implements Screen {
 
     private int lastBottomRowN = 0;
 
-    private final static float ROW_SPEED_MIN = 30;
-    private final static float ROW_SPEED_MAX = 80;
+    private final static float ROW_SPEED_MIN = 40;
+    private final static float ROW_SPEED_MAX = 100;
     private final static float SECONDS_UNTIL_MAX_SPEED = 30.0f;
 
-    private final static float DONUT_MIN_HORIZONTAL_SPEED = 50;
-    private final static float DONUT_MAX_HORIZONTAL_SPEED = 100;
+    private final static float DONUT_MIN_HORIZONTAL_SPEED = 60;
+    private final static float DONUT_MAX_HORIZONTAL_SPEED = 160;
 
     private Interpolation speedInterpolation;
     private float gameTime;
@@ -188,14 +188,15 @@ public class GameScreen implements Screen {
         if (Gdx.input.isPeripheralAvailable(Input.Peripheral.Accelerometer)) {
             accel = Gdx.input.getAccelerometerX() / -10.0f;
         } else {
-            if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) accel = -1.0f;
-            if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) accel = 1.0f;
+            if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) accel = -0.5f;
+            if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) accel = 0.5f;
         }
 
         if (Math.abs(accel) < 0.1)
             donut.move(0.0f);
         else {
-            float finalSpeed = DONUT_MIN_HORIZONTAL_SPEED + ((DONUT_MAX_HORIZONTAL_SPEED - DONUT_MIN_HORIZONTAL_SPEED) * Math.abs(accel));
+            float intensity = Math.abs(accel);
+            float finalSpeed = speedInterpolation.apply(DONUT_MIN_HORIZONTAL_SPEED, DONUT_MAX_HORIZONTAL_SPEED, intensity);
             if (accel < 0.0f)
                 finalSpeed *= -1.0f;
             System.out.println("Speed: " + finalSpeed);
